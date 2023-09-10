@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">SendDataToServer</string>
+    <string name="accessibility_service_description">accessibility service</string>
+</resources>
