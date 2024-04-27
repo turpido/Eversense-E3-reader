@@ -9,6 +9,7 @@ import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.CountDownTimer;
 import android.os.Handler;
@@ -16,11 +17,17 @@ import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
+import java.util.Calendar;
 import java.util.Date;
 import java.util.Objects;
 
@@ -42,7 +49,7 @@ public class NotificationService extends NotificationListenerService {
         Log.e("NotificationService","service started");
         context = getApplicationContext() ;
         Notification notification = createForegroundNotification();
-        startForeground(1, notification);
+        startForeground(Integer.parseInt(CHANNEL_ID), notification);
     }
 
     private Notification createForegroundNotification() {
@@ -50,17 +57,24 @@ public class NotificationService extends NotificationListenerService {
         // Create and customize your foreground notification here
         // ...
 
+        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        assert notificationManager != null;
+        NotificationCompat.Builder builder;
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Foreground Service Channel",
                     NotificationManager.IMPORTANCE_DEFAULT
             );
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
             notificationManager.createNotificationChannel(channel);
+            builder = new NotificationCompat.Builder(this, channel.getId());
+        } else {
+            builder = new NotificationCompat.Builder(this);
         }
 
-        // Create a notification with your desired content
+        builder.setDefaults(Notification.DEFAULT_LIGHTS);
+
         Intent notificationIntent = new Intent(this, KillForegroundService.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 this,
@@ -69,14 +83,26 @@ public class NotificationService extends NotificationListenerService {
                 PendingIntent.FLAG_IMMUTABLE
         );
 
-        return new NotificationCompat.Builder(this, CHANNEL_ID).setOngoing(true)
-                .setContentTitle("Sugar Share")
+        builder.setContentTitle("Sugar Share")
+                .setChannelId(CHANNEL_ID)
                 .setContentText("Service is running, sending sugar value to server.")
-                .setPriority(NotificationManager.IMPORTANCE_MIN)
+                .setPriority(NotificationManager.IMPORTANCE_HIGH)
                 .setCategory(Notification.CATEGORY_SERVICE)
+                .setColor(Color.WHITE)
                 .setSmallIcon(R.drawable.ic_baseline_water_drop_24)
-                .addAction(0, "Force Stop", pendingIntent)
-                .build();
+                .addAction(0, "Stop", pendingIntent);
+
+        Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        assert launchIntent != null;
+        launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+
+        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, launchIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        builder.setContentIntent(contentIntent);
+
+        Notification notification = builder.build();
+        notification.flags = Notification.FLAG_ONGOING_EVENT;
+        return notification;
     }
     @Override
     public void onNotificationPosted (StatusBarNotification sbn) {
@@ -87,30 +113,89 @@ public class NotificationService extends NotificationListenerService {
             if (sbn.getPackageName() != null) {
 
                 if (Objects.equals(sbn.getPackageName(), "com.senseonics.gen12androidapp")) {
-
+                    Log.d(TAG, "onNotificationPosted: " + sbn.getNotification().tickerText);
                     if(!isDuplicateNotification(sbn)) {
                         lastNotification = sbn;
 
                         FirebaseDatabase database = FirebaseDatabase.getInstance();
 
                         DatabaseReference sugarValue = database.getReference("sugar");
+                        DatabaseReference calibrate = database.getReference("calibrate");
+                        DatabaseReference error = database.getReference("error");
+                        DatabaseReference tredludek = database.getReference("tredludek");
+                        DatabaseReference latestMessage = database.getReference("latestMessage");
+                        DatabaseReference lastTredludecDate = database.getReference("lastTredludecDate");
                         try {
-                            if (sbn.getNotification().tickerText != "High Glucose") {
-                                sugarValue.setValue(Integer.parseInt((String) sbn.getNotification().tickerText));
+                            if(sbn.getNotification() != null && sbn.getNotification().tickerText != null) {
+                                Log.e("data received", "data: " + sbn.getNotification().tickerText);
+//                                latestMessage.setValue(sbn.getNotification().tickerText.toString());
+                                if (sbn.getNotification().tickerText.toString().equals("HI") ||
+                                        sbn.getNotification().tickerText.toString().equals("Out of Range High Glucose")) {
+                                    sugarValue.setValue(400);
+                                } else if (sbn.getNotification().tickerText.toString().equals("Calibrate Now") ||
+                                        sbn.getNotification().tickerText.toString().equals("Calibrate Past Due")) {
+                                    calibrate.setValue(true);
+                                } else if (sbn.getNotification().tickerText.toString().contains("---")) {
+                                    sugarValue.setValue(-1);
+                                } else {
+                                    try {
+                                        sugarValue.setValue(Integer.parseInt((String) sbn.getNotification().tickerText));
+                                    } catch (Exception e) {
+
+//                                        DatabaseReference otherData;
+//                                        otherData = database.getReference("otherData/" + otherDataIndex);
+//                                        otherData.setValue(sbn.getNotification().tickerText);
+//                                        error.setValue(e.getCause() + " - " + e.getMessage());
+//                                        otherDataIndex++;
+                                    }
+                                }
                             } else {
-                                sugarValue.setValue(400);
+                                if(sbn.getNotification() != null) {
+                                    latestMessage.setValue(sbn.getNotification());
+                                }
                             }
                         } catch (Exception e) {
-                            sugarValue.setValue(0);
+                            error.setValue(e.getMessage());
                         }
-
-//                DatabaseReference noValue = database.getReference("noValue");
-//                noValue.setValue(false);
-
                         DatabaseReference date = database.getReference("date");
-                        date.setValue(new Date().toString());
+                        date.getDatabase().getReference().addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+                                try {
+                                    lastTredludecDate.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+                                        @Override
+                                        public void onComplete(@NonNull Task<DataSnapshot> task) {
+                                            if(task.isSuccessful()) {
+                                                try {
+                                                    Date resault = new Date((Long) task.getResult().getValue());
+                                                    Calendar preTime = Calendar.getInstance();
+                                                    preTime.setTime(resault);
+                                                    Calendar currentTime = Calendar.getInstance();
+                                                    currentTime.setTime(new Date());
+                                                    if(currentTime.get(Calendar.DAY_OF_MONTH) != preTime.get(Calendar.DAY_OF_MONTH)){
+                                                        tredludek.setValue(true);
+                                                        lastTredludecDate.setValue(new Date().getTime());
+                                                    }
+                                                } catch (Exception e){
+                                                    Log.e("error 1", e.getMessage());
+                                                }
+                                            }
+                                        }
+                                    });
 
-                        Log.e("sentToFirebase", String.valueOf(sbn.getNotification().tickerText));
+                                } catch (Exception e){
+                                    Log.e("error",e.getMessage());
+                                }
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError error) {
+
+                            }
+                        });
+                        date.setValue(new Date().getTime() / 1000);
+
+//                        Log.e("sentToFirebase", String.valueOf(sbn.getNotification().tickerText));
                         handler.postDelayed(() -> lastNotification = null, 5000);
                     }
                 }
@@ -140,7 +225,9 @@ public class NotificationService extends NotificationListenerService {
     }
 
     @Override
-    public void onDestroy(){
-        Log.e("NotificationService","service destroyed");
+    public void onDestroy() {
+        super.onDestroy();
+        ForegroundServiceLauncher.getInstance().startService(this);
     }
 }
+

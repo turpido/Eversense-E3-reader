@@ -16,7 +16,8 @@
         android:roundIcon="@drawable/baseline_water_drop_24"
         android:supportsRtl="true"
         android:theme="@style/Theme.SendDataToServer"
-        tools:targetApi="31">
+        tools:targetApi="33">
+
         <activity
             android:name=".MainActivity"
             android:exported="true">

@@ -1,6 +1,8 @@
 package com.example.senddatatoserver;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.work.Constraints;
 import androidx.work.NetworkType;
@@ -11,6 +13,7 @@ import android.accessibilityservice.AccessibilityServiceInfo;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -24,24 +27,33 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    int REQUEST_NOTIFICATION_CODE = 101;
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         try {
-            OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(BackupWorker.class)
-                    .setConstraints(new Constraints.Builder()
-                            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
-                            .build())
-                    .build();
-            WorkManager.getInstance(this).enqueue(workRequest);
-
+//            OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(BackupWorker.class)
+//                    .setConstraints(new Constraints.Builder()
+//                            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
+//                            .build())
+//                    .build();
+//            WorkManager.getInstance(this).enqueue(workRequest);
+//
+            if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS},REQUEST_NOTIFICATION_CODE);
+            }
             if (!isNotificationAccessEnabled()) {
                 // If not, request the permission
                 Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
                 startActivity(intent);
             }
-            finishAndRemoveTask();
+            if(ContextCompat.checkSelfPermission(
+                    MainActivity.this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED &&
+                    isNotificationAccessEnabled()) {
+                ForegroundServiceLauncher.getInstance().startService(this);
+                finishAndRemoveTask();
+            }
         } catch (Exception e){
             Log.e("error MainActivity", e.toString());
         }
@@ -51,6 +63,25 @@ public class MainActivity extends AppCompatActivity {
         String packageName = getPackageName();
         String flat = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
         return flat != null && flat.contains(packageName);
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+            if(requestCode == REQUEST_NOTIFICATION_CODE) {
+                if(grantResults.length > 0){
+                    if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                        if(isNotificationAccessEnabled()) {
+                            ForegroundServiceLauncher.getInstance().startService(this);
+                            finishAndRemoveTask();
+                        } else {
+                            Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+                            startActivity(intent);
+                        }
+                    }
+                }
+            }
     }
 
     @Override
