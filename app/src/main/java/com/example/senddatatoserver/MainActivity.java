@@ -57,6 +57,14 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e){
             Log.e("error MainActivity", e.toString());
         }
+
+        Thread.setDefaultUncaughtExceptionHandler(new Thread.UncaughtExceptionHandler() {
+            @Override
+            public void uncaughtException(@NonNull Thread t, @NonNull Throwable e) {
+                SupabaseAPI api = new SupabaseAPI();
+                api.updateError(e.getMessage(), t.getName());
+            }
+        });
     }
 
     private boolean isNotificationAccessEnabled() {
@@ -68,7 +76,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
             if(requestCode == REQUEST_NOTIFICATION_CODE) {
                 if(grantResults.length > 0){
                     if(grantResults[0] == PackageManager.PERMISSION_GRANTED) {

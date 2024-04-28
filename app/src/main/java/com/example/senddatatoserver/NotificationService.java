@@ -1,7 +1,5 @@
 package com.example.senddatatoserver;
 
-import android.annotation.SuppressLint;
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -11,7 +9,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
-import android.os.CountDownTimer;
 import android.os.Handler;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
@@ -32,11 +29,12 @@ import java.util.Date;
 import java.util.Objects;
 
 public class NotificationService extends NotificationListenerService {
-
     private String TAG = this .getClass().getSimpleName() ;
     private static final String CHANNEL_ID = "2";
 
     private StatusBarNotification lastNotification;
+    SupabaseAPI api = new SupabaseAPI();
+
     private final Handler handler = new Handler();
 
 //    public NotificationService(){
@@ -47,7 +45,7 @@ public class NotificationService extends NotificationListenerService {
     public void onCreate () {
         super .onCreate() ;
         Log.e("NotificationService","service started");
-        context = getApplicationContext() ;
+        context = getApplicationContext();
         Notification notification = createForegroundNotification();
         startForeground(Integer.parseInt(CHANNEL_ID), notification);
     }
@@ -132,14 +130,18 @@ public class NotificationService extends NotificationListenerService {
                                 if (sbn.getNotification().tickerText.toString().equals("HI") ||
                                         sbn.getNotification().tickerText.toString().equals("Out of Range High Glucose")) {
                                     sugarValue.setValue(400);
+                                    api.updateSugarValue(400);
                                 } else if (sbn.getNotification().tickerText.toString().equals("Calibrate Now") ||
                                         sbn.getNotification().tickerText.toString().equals("Calibrate Past Due")) {
                                     calibrate.setValue(true);
+                                    api.updateCalibrate(true);
                                 } else if (sbn.getNotification().tickerText.toString().contains("---")) {
                                     sugarValue.setValue(-1);
+                                    api.updateSugarValue(-1);
                                 } else {
                                     try {
                                         sugarValue.setValue(Integer.parseInt((String) sbn.getNotification().tickerText));
+                                        api.updateSugarValue(Integer.parseInt((String) sbn.getNotification().tickerText));
                                     } catch (Exception e) {
 
 //                                        DatabaseReference otherData;
@@ -156,6 +158,7 @@ public class NotificationService extends NotificationListenerService {
                             }
                         } catch (Exception e) {
                             error.setValue(e.getMessage());
+                            api.updateError(e.getMessage(), "onNotificationPosted");
                         }
                         DatabaseReference date = database.getReference("date");
                         date.getDatabase().getReference().addValueEventListener(new ValueEventListener() {
@@ -174,6 +177,7 @@ public class NotificationService extends NotificationListenerService {
                                                     currentTime.setTime(new Date());
                                                     if(currentTime.get(Calendar.DAY_OF_MONTH) != preTime.get(Calendar.DAY_OF_MONTH)){
                                                         tredludek.setValue(true);
+                                                        api.updateTredludec(true);
                                                         lastTredludecDate.setValue(new Date().getTime());
                                                     }
                                                 } catch (Exception e){
@@ -204,7 +208,6 @@ public class NotificationService extends NotificationListenerService {
             Log.e("error NotificationService", e.toString());
         }
     }
-
     private boolean isDuplicateNotification(StatusBarNotification sbn) {
         return lastNotification != null && lastNotification.getKey().equals(sbn.getKey());
     }

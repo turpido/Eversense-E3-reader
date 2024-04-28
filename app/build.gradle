@@ -5,16 +5,21 @@ plugins {
 
 android {
     namespace 'com.example.senddatatoserver'
-    compileSdk 33
+    compileSdk 34
 
     defaultConfig {
         applicationId "com.example.senddatatoserver"
         minSdk 25
-        targetSdk 33
+        targetSdk 34
         versionCode 1
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        Properties properties = new Properties()
+        properties.load(project.rootProject.file("local.properties").newDataInputStream())
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${properties.getProperty("SUPABASE_ANON_KEY")}\"")
+        buildConfigField("String", "SECRET", "\"${properties.getProperty("SECRET")}\"")
+        buildConfigField("String", "SUPABASE_URL", "\"${properties.getProperty("SUPABASE_URL")}\"")
     }
 
     buildTypes {
@@ -30,8 +35,14 @@ android {
 }
 
 dependencies {
-
-    implementation 'androidx.work:work-runtime:2.7.1'
+//    implementation "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0"
+//    implementation"org.jetbrains.kotlin:kotlin-stdlib-jdk7:2.2.1"
+//    implementation platform("io.github.jan-tennert.supabase:bom:2.3.1")
+//    implementation "io.github.jan-tennert.supabase:postgrest-kt:2.3.1"
+//    implementation "io.github.jan-tennert.supabase:realtime-kt:2.3.1"
+//    implementation "io.ktor:ktor-client-android:2.3.10"
+//    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
+//    implementation 'androidx.work:work-runtime:2.7.1'
     implementation 'com.google.guava:guava:27.0.1-android'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
