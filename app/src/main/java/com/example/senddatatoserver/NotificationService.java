@@ -158,7 +158,7 @@ public class NotificationService extends NotificationListenerService {
                             }
                         } catch (Exception e) {
                             error.setValue(e.getMessage());
-                            api.updateError(e.getMessage(), "onNotificationPosted");
+                            api.updateError(String.valueOf(e.getCause()), "onNotificationPosted -> parse notification");
                         }
                         DatabaseReference date = database.getReference("date");
                         date.getDatabase().getReference().addValueEventListener(new ValueEventListener() {
@@ -177,7 +177,7 @@ public class NotificationService extends NotificationListenerService {
                                                     currentTime.setTime(new Date());
                                                     if(currentTime.get(Calendar.DAY_OF_MONTH) != preTime.get(Calendar.DAY_OF_MONTH)){
                                                         tredludek.setValue(true);
-                                                        api.updateTredludec(true);
+//                                                        api.updateTredludec(true);
                                                         lastTredludecDate.setValue(new Date().getTime());
                                                     }
                                                 } catch (Exception e){
@@ -206,6 +206,7 @@ public class NotificationService extends NotificationListenerService {
             }
         } catch (Exception e){
             Log.e("error NotificationService", e.toString());
+            api.updateError(String.valueOf(e.getCause()), "onNotificationPosted");
         }
     }
     private boolean isDuplicateNotification(StatusBarNotification sbn) {

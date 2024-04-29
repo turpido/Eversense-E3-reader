@@ -17,11 +17,12 @@ public class SupabaseAPI {
     String supabaseUrl = BuildConfig.SUPABASE_URL;
     String supabaseApiKey = BuildConfig.SUPABASE_ANON_KEY;
     // Specify the table name
-    String table = "Sugar";
+    String table = "sugar";
     String errorTable = "error";
-    String sugarCol = "sugarVal";
-    String calibrateCol = "calibrateNeeded";
-    String tredludecCol = "tredludecNeeded";
+    String sugarCol = "sugar_val";
+    String calibrateCol = "calibrate_needed";
+    String tredludecCol = "tredludec_needed";
+    String dateCol = "update_date";
     String TAG = "request";
 
     public String getSugarData() {
@@ -59,7 +60,8 @@ public class SupabaseAPI {
 
 
                 // Construct the URL for the HTTP GET request
-                String apiUrl = String.format("%s/rest/v1/%s?select=%s&apikey=%s", supabaseUrl, table, col, supabaseApiKey);                URL url = new URL(apiUrl);
+                String apiUrl = String.format("%s/rest/v1/%s?select=%s&apikey=%s", supabaseUrl, table, col, supabaseApiKey);
+                URL url = new URL(apiUrl);
 
                 // Create connection
                 HttpURLConnection connection = (HttpURLConnection) url.openConnection();
@@ -110,7 +112,7 @@ public class SupabaseAPI {
                 connection.setDoOutput(true);
 
                 // Construct the JSON payload for the update
-                String payload = String.format("{\"%s\": \"%s\"}", updateColName, updateValue);
+                String payload = String.format("{\"%s\": \"%s\",\"%s\": \"%s\"}", updateColName, updateValue, dateCol, new Date());
 
                 // Write the payload to the connection output stream
                 OutputStreamWriter writer = new OutputStreamWriter(connection.getOutputStream());

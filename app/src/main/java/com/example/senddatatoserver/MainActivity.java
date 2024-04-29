@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void uncaughtException(@NonNull Thread t, @NonNull Throwable e) {
                 SupabaseAPI api = new SupabaseAPI();
-                api.updateError(e.getMessage(), t.getName());
+                api.updateError(String.valueOf(e.getCause()), t.getName());
             }
         });
     }
