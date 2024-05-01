@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
@@ -16,13 +17,13 @@ import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
-import com.google.firebase.database.DataSnapshot;
-import com.google.firebase.database.DatabaseError;
-import com.google.firebase.database.DatabaseReference;
-import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.ValueEventListener;
+//import com.google.android.gms.tasks.OnCompleteListener;
+//import com.google.android.gms.tasks.Task;
+//import com.google.firebase.database.DataSnapshot;
+//import com.google.firebase.database.DatabaseError;
+//import com.google.firebase.database.DatabaseReference;
+//import com.google.firebase.database.FirebaseDatabase;
+//import com.google.firebase.database.ValueEventListener;
 
 import java.util.Calendar;
 import java.util.Date;
@@ -115,32 +116,32 @@ public class NotificationService extends NotificationListenerService {
                     if(!isDuplicateNotification(sbn)) {
                         lastNotification = sbn;
 
-                        FirebaseDatabase database = FirebaseDatabase.getInstance();
-
-                        DatabaseReference sugarValue = database.getReference("sugar");
-                        DatabaseReference calibrate = database.getReference("calibrate");
-                        DatabaseReference error = database.getReference("error");
-                        DatabaseReference tredludek = database.getReference("tredludek");
-                        DatabaseReference latestMessage = database.getReference("latestMessage");
-                        DatabaseReference lastTredludecDate = database.getReference("lastTredludecDate");
+//                        FirebaseDatabase database = FirebaseDatabase.getInstance();
+//
+//                        DatabaseReference sugarValue = database.getReference("sugar");
+//                        DatabaseReference calibrate = database.getReference("calibrate");
+//                        DatabaseReference error = database.getReference("error");
+//                        DatabaseReference tredludek = database.getReference("tredludek");
+//                        DatabaseReference latestMessage = database.getReference("latestMessage");
+//                        DatabaseReference lastTredludecDate = database.getReference("lastTredludecDate");
                         try {
                             if(sbn.getNotification() != null && sbn.getNotification().tickerText != null) {
                                 Log.e("data received", "data: " + sbn.getNotification().tickerText);
 //                                latestMessage.setValue(sbn.getNotification().tickerText.toString());
                                 if (sbn.getNotification().tickerText.toString().equals("HI") ||
                                         sbn.getNotification().tickerText.toString().equals("Out of Range High Glucose")) {
-                                    sugarValue.setValue(400);
+//                                    sugarValue.setValue(400);
                                     api.updateSugarValue(400);
                                 } else if (sbn.getNotification().tickerText.toString().equals("Calibrate Now") ||
                                         sbn.getNotification().tickerText.toString().equals("Calibrate Past Due")) {
-                                    calibrate.setValue(true);
+//                                    calibrate.setValue(true);
                                     api.updateCalibrate(true);
                                 } else if (sbn.getNotification().tickerText.toString().contains("---")) {
-                                    sugarValue.setValue(-1);
+//                                    sugarValue.setValue(-1);
                                     api.updateSugarValue(-1);
                                 } else {
                                     try {
-                                        sugarValue.setValue(Integer.parseInt((String) sbn.getNotification().tickerText));
+//                                        sugarValue.setValue(Integer.parseInt((String) sbn.getNotification().tickerText));
                                         api.updateSugarValue(Integer.parseInt((String) sbn.getNotification().tickerText));
                                     } catch (Exception e) {
 
@@ -153,51 +154,51 @@ public class NotificationService extends NotificationListenerService {
                                 }
                             } else {
                                 if(sbn.getNotification() != null) {
-                                    latestMessage.setValue(sbn.getNotification());
+//                                    latestMessage.setValue(sbn.getNotification());
                                 }
                             }
                         } catch (Exception e) {
-                            error.setValue(e.getMessage());
+//                            error.setValue(e.getMessage());
                             api.updateError(String.valueOf(e.getCause()), "onNotificationPosted -> parse notification");
                         }
-                        DatabaseReference date = database.getReference("date");
-                        date.getDatabase().getReference().addValueEventListener(new ValueEventListener() {
-                            @Override
-                            public void onDataChange(@NonNull DataSnapshot snapshot) {
-                                try {
-                                    lastTredludecDate.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
-                                        @Override
-                                        public void onComplete(@NonNull Task<DataSnapshot> task) {
-                                            if(task.isSuccessful()) {
-                                                try {
-                                                    Date resault = new Date((Long) task.getResult().getValue());
-                                                    Calendar preTime = Calendar.getInstance();
-                                                    preTime.setTime(resault);
-                                                    Calendar currentTime = Calendar.getInstance();
-                                                    currentTime.setTime(new Date());
-                                                    if(currentTime.get(Calendar.DAY_OF_MONTH) != preTime.get(Calendar.DAY_OF_MONTH)){
-                                                        tredludek.setValue(true);
-//                                                        api.updateTredludec(true);
-                                                        lastTredludecDate.setValue(new Date().getTime());
-                                                    }
-                                                } catch (Exception e){
-                                                    Log.e("error 1", e.getMessage());
-                                                }
-                                            }
-                                        }
-                                    });
-
-                                } catch (Exception e){
-                                    Log.e("error",e.getMessage());
-                                }
-                            }
-
-                            @Override
-                            public void onCancelled(@NonNull DatabaseError error) {
-
-                            }
-                        });
-                        date.setValue(new Date().getTime() / 1000);
+//                        DatabaseReference date = database.getReference("date");
+//                        date.getDatabase().getReference().addValueEventListener(new ValueEventListener() {
+//                            @Override
+//                            public void onDataChange(@NonNull DataSnapshot snapshot) {
+//                                try {
+//                                    lastTredludecDate.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
+//                                        @Override
+//                                        public void onComplete(@NonNull Task<DataSnapshot> task) {
+//                                            if(task.isSuccessful()) {
+//                                                try {
+//                                                    Date resault = new Date((Long) task.getResult().getValue());
+//                                                    Calendar preTime = Calendar.getInstance();
+//                                                    preTime.setTime(resault);
+//                                                    Calendar currentTime = Calendar.getInstance();
+//                                                    currentTime.setTime(new Date());
+//                                                    if(currentTime.get(Calendar.DAY_OF_MONTH) != preTime.get(Calendar.DAY_OF_MONTH)){
+//                                                        tredludek.setValue(true);
+////                                                        api.updateTredludec(true);
+//                                                        lastTredludecDate.setValue(new Date().getTime());
+//                                                    }
+//                                                } catch (Exception e){
+//                                                    Log.e("error 1", e.getMessage());
+//                                                }
+//                                            }
+//                                        }
+//                                    });
+//
+//                                } catch (Exception e){
+//                                    Log.e("error",e.getMessage());
+//                                }
+//                            }
+//
+//                            @Override
+//                            public void onCancelled(@NonNull DatabaseError error) {
+//
+//                            }
+//                        });
+//                        date.setValue(new Date().getTime() / 1000);
 
 //                        Log.e("sentToFirebase", String.valueOf(sbn.getNotification().tickerText));
                         handler.postDelayed(() -> lastNotification = null, 5000);
