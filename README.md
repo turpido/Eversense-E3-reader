@@ -10,3 +10,4 @@ the app currently reads Eversense E3 notification and send them to supabase to s
 for my use case the app reads my sugar level, and catch if i get a calibrate notification to update iswell.
 I personaly use this app to display my glucose on a portable clock display, sitting under my pc monitor, so my phone can stay in my pocket while i constantly see my glucose trend right in front of me.
 good luck to all who try this app out!
+![sugar_display](https://github.com/turpido/Eversense-E3-reader/assets/48402145/7840bb04-5a1a-4ba9-8f11-4255d2f7275c)
