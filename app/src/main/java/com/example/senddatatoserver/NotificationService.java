@@ -60,17 +60,13 @@ public class NotificationService extends NotificationListenerService {
         assert notificationManager != null;
         NotificationCompat.Builder builder;
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Foreground Service Channel",
-                    NotificationManager.IMPORTANCE_DEFAULT
-            );
-            notificationManager.createNotificationChannel(channel);
-            builder = new NotificationCompat.Builder(this, channel.getId());
-        } else {
-            builder = new NotificationCompat.Builder(this);
-        }
+        NotificationChannel channel = new NotificationChannel(
+                CHANNEL_ID,
+                "Foreground Service Channel",
+                NotificationManager.IMPORTANCE_DEFAULT
+        );
+        notificationManager.createNotificationChannel(channel);
+        builder = new NotificationCompat.Builder(this, channel.getId());
 
         builder.setDefaults(Notification.DEFAULT_LIGHTS);
 
