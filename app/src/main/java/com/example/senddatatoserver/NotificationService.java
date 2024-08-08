@@ -1,22 +1,36 @@
 package com.example.senddatatoserver;
 
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Handler;
+import android.os.Message;
+import android.os.Parcelable;
 import android.service.notification.NotificationListenerService;
 import android.service.notification.StatusBarNotification;
+import android.text.TextUtils;
 import android.util.Log;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.RemoteViews;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
+import androidx.core.content.ContextCompat;
+import androidx.work.PeriodicWorkRequest;
+import androidx.work.WorkManager;
 //import com.google.android.gms.tasks.OnCompleteListener;
 //import com.google.android.gms.tasks.Task;
 //import com.google.firebase.database.DataSnapshot;
@@ -25,15 +39,19 @@ import androidx.core.app.NotificationCompat;
 //import com.google.firebase.database.FirebaseDatabase;
 //import com.google.firebase.database.ValueEventListener;
 
+import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 public class NotificationService extends NotificationListenerService {
     private String TAG = this .getClass().getSimpleName() ;
     private static final String CHANNEL_ID = "2";
-
     private StatusBarNotification lastNotification;
+    public static int mCurrentNotificationsCounts = 0;
     SupabaseAPI api = new SupabaseAPI();
 
     private final Handler handler = new Handler();
@@ -44,35 +62,58 @@ public class NotificationService extends NotificationListenerService {
     Context context ;
     @Override
     public void onCreate () {
-        super .onCreate() ;
+        super .onCreate();
         Log.e("NotificationService","service started");
+    }
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
         context = getApplicationContext();
-        Notification notification = createForegroundNotification();
+        Notification notification = createForegroundNotification(this);
         startForeground(Integer.parseInt(CHANNEL_ID), notification);
+        scheduleNotificationCheck();
+        return START_STICKY;
     }
 
-    private Notification createForegroundNotification() {
+    private void toggleNotificationListenerService() {
+        PackageManager pm = getPackageManager();
+        pm.setComponentEnabledSetting(new ComponentName(this, NotificationService.class),
+                PackageManager.COMPONENT_ENABLED_STATE_DISABLED, PackageManager.DONT_KILL_APP);
+
+        pm.setComponentEnabledSetting(new ComponentName(this, NotificationService.class),
+                PackageManager.COMPONENT_ENABLED_STATE_ENABLED, PackageManager.DONT_KILL_APP);
+
+    }
+
+    private void scheduleNotificationCheck() {
+        PeriodicWorkRequest notificationCheckRequest =
+                new PeriodicWorkRequest.Builder(NotificationCheckWorker.class, 15, TimeUnit.MINUTES)
+                        .build();
+
+        WorkManager.getInstance(this).enqueue(notificationCheckRequest);
+    }
+
+    public static Notification createForegroundNotification(Context context) {
 
         // Create and customize your foreground notification here
         // ...
 
-        NotificationManager notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
         assert notificationManager != null;
         NotificationCompat.Builder builder;
 
         NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID,
                 "Foreground Service Channel",
-                NotificationManager.IMPORTANCE_DEFAULT
+                NotificationManager.IMPORTANCE_HIGH
         );
         notificationManager.createNotificationChannel(channel);
-        builder = new NotificationCompat.Builder(this, channel.getId());
+        builder = new NotificationCompat.Builder(context, channel.getId());
 
         builder.setDefaults(Notification.DEFAULT_LIGHTS);
 
-        Intent notificationIntent = new Intent(this, KillForegroundService.class);
+        Intent notificationIntent = new Intent(context, KillForegroundService.class);
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
-                this,
+                context,
                 0,
                 notificationIntent,
                 PendingIntent.FLAG_IMMUTABLE
@@ -84,14 +125,15 @@ public class NotificationService extends NotificationListenerService {
                 .setPriority(NotificationManager.IMPORTANCE_HIGH)
                 .setCategory(Notification.CATEGORY_SERVICE)
                 .setColor(Color.WHITE)
+                .setOngoing(true)
                 .setSmallIcon(R.drawable.ic_baseline_water_drop_24)
                 .addAction(0, "Stop", pendingIntent);
 
-        Intent launchIntent = getPackageManager().getLaunchIntentForPackage(getPackageName());
+        Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(context.getPackageName());
         assert launchIntent != null;
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
 
-        PendingIntent contentIntent = PendingIntent.getActivity(this, 0, launchIntent,
+        PendingIntent contentIntent = PendingIntent.getActivity(context, 0, launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         builder.setContentIntent(contentIntent);
 
@@ -107,96 +149,45 @@ public class NotificationService extends NotificationListenerService {
             Log.i(TAG, "ID :" + sbn.getId() + " \t " + sbn.getNotification().tickerText + " \t " + sbn.getPackageName());
             if (sbn.getPackageName() != null) {
 
-                if (Objects.equals(sbn.getPackageName(), "com.senseonics.gen12androidapp")) {
+                if (Objects.equals(sbn.getPackageName(), "com.dexcom.g7")) {
                     Log.d(TAG, "onNotificationPosted: " + sbn.getNotification().tickerText);
                     if(!isDuplicateNotification(sbn)) {
                         lastNotification = sbn;
-
-//                        FirebaseDatabase database = FirebaseDatabase.getInstance();
-//
-//                        DatabaseReference sugarValue = database.getReference("sugar");
-//                        DatabaseReference calibrate = database.getReference("calibrate");
-//                        DatabaseReference error = database.getReference("error");
-//                        DatabaseReference tredludek = database.getReference("tredludek");
-//                        DatabaseReference latestMessage = database.getReference("latestMessage");
-//                        DatabaseReference lastTredludecDate = database.getReference("lastTredludecDate");
                         try {
-                            if(sbn.getNotification() != null && sbn.getNotification().tickerText != null) {
-                                Log.e("data received", "data: " + sbn.getNotification().tickerText);
-//                                latestMessage.setValue(sbn.getNotification().tickerText.toString());
-                                if (sbn.getNotification().tickerText.toString().equals("HI") ||
-                                        sbn.getNotification().tickerText.toString().equals("Out of Range High Glucose")) {
-//                                    sugarValue.setValue(400);
-                                    api.updateSugarValue(400);
-                                } else if (sbn.getNotification().tickerText.toString().equals("Calibrate Now") ||
-                                        sbn.getNotification().tickerText.toString().equals("Calibrate Past Due")) {
-//                                    calibrate.setValue(true);
-                                    api.updateCalibrate(true);
-                                } else if (sbn.getNotification().tickerText.toString().contains("---")) {
-//                                    sugarValue.setValue(-1);
-                                    api.updateSugarValue(-1);
-                                } else {
-                                    try {
-//                                        sugarValue.setValue(Integer.parseInt((String) sbn.getNotification().tickerText));
-                                        api.updateSugarValue(Integer.parseInt((String) sbn.getNotification().tickerText));
-                                    } catch (Exception e) {
 
-//                                        DatabaseReference otherData;
-//                                        otherData = database.getReference("otherData/" + otherDataIndex);
-//                                        otherData.setValue(sbn.getNotification().tickerText);
-//                                        error.setValue(e.getCause() + " - " + e.getMessage());
-//                                        otherDataIndex++;
-                                    }
-                                }
-                            } else {
-                                if(sbn.getNotification() != null) {
-//                                    latestMessage.setValue(sbn.getNotification());
-                                }
+                            String sugar = extractSugarFromNotification(sbn.getNotification());
+                            int sugarInt;
+                            try {
+                                sugarInt = Integer.parseInt(sugar);
+                                api.updateSugarValue(sugarInt);
+                            } catch (Exception e) {
+//                                api.updateSugarValue(-1);
                             }
-                        } catch (Exception e) {
-//                            error.setValue(e.getMessage());
-                            api.updateError(String.valueOf(e.getCause()), "onNotificationPosted -> parse notification");
-                        }
-//                        DatabaseReference date = database.getReference("date");
-//                        date.getDatabase().getReference().addValueEventListener(new ValueEventListener() {
-//                            @Override
-//                            public void onDataChange(@NonNull DataSnapshot snapshot) {
-//                                try {
-//                                    lastTredludecDate.get().addOnCompleteListener(new OnCompleteListener<DataSnapshot>() {
-//                                        @Override
-//                                        public void onComplete(@NonNull Task<DataSnapshot> task) {
-//                                            if(task.isSuccessful()) {
-//                                                try {
-//                                                    Date resault = new Date((Long) task.getResult().getValue());
-//                                                    Calendar preTime = Calendar.getInstance();
-//                                                    preTime.setTime(resault);
-//                                                    Calendar currentTime = Calendar.getInstance();
-//                                                    currentTime.setTime(new Date());
-//                                                    if(currentTime.get(Calendar.DAY_OF_MONTH) != preTime.get(Calendar.DAY_OF_MONTH)){
-//                                                        tredludek.setValue(true);
-////                                                        api.updateTredludec(true);
-//                                                        lastTredludecDate.setValue(new Date().getTime());
-//                                                    }
-//                                                } catch (Exception e){
-//                                                    Log.e("error 1", e.getMessage());
-//                                                }
-//                                            }
-//                                        }
-//                                    });
-//
-//                                } catch (Exception e){
-//                                    Log.e("error",e.getMessage());
+
+
+//                            if(sbn.getNotification() != null && sbn.getNotification().tickerText != null) {
+//                                Log.e("data received", "data: " + sbn.getNotification().tickerText);
+//                                if (sbn.getNotification().tickerText.toString().equals("HI") ||
+//                                        sbn.getNotification().tickerText.toString().equals("Out of Range High Glucose")) {
+//                                    api.updateSugarValue(400);
+//                                } else if (sbn.getNotification().tickerText.toString().equals("Calibrate Now") ||
+//                                        sbn.getNotification().tickerText.toString().equals("Calibrate Past Due")) {
+//                                    api.updateCalibrate(true);
+//                                } else if (sbn.getNotification().tickerText.toString().contains("---")) {
+//                                    api.updateSugarValue(-1);
+//                                } else {
+//                                    try {
+//                                        api.updateSugarValue(Integer.parseInt((String) sbn.getNotification().tickerText));
+//                                    } catch (Exception e) {
+//                                    }
+//                                }
+//                            } else {
+//                                if(sbn.getNotification() != null) {
 //                                }
 //                            }
-//
-//                            @Override
-//                            public void onCancelled(@NonNull DatabaseError error) {
-//
-//                            }
-//                        });
-//                        date.setValue(new Date().getTime() / 1000);
-
-//                        Log.e("sentToFirebase", String.valueOf(sbn.getNotification().tickerText));
+                        } catch (Exception e) {
+                            api.updateError(String.valueOf(e.getCause()), "onNotificationPosted -> parse notification");
+                        }
                         handler.postDelayed(() -> lastNotification = null, 5000);
                     }
                 }
@@ -206,6 +197,33 @@ public class NotificationService extends NotificationListenerService {
             api.updateError(String.valueOf(e.getCause()), "onNotificationPosted");
         }
     }
+
+    private String extractSugarFromNotification(Notification notification){
+        try {
+            RemoteViews contentView  = notification.contentView;
+            View applied = contentView.apply(this, null);
+            ViewGroup root = (ViewGroup) applied.getRootView();
+            ArrayList<TextView> texts = new ArrayList<>();
+            getTextViews(texts, root);
+            return texts.get(0).getText().toString();
+        } catch (Exception e){
+            return "";
+        }
+    }
+    private void getTextViews(final List<TextView> output, final ViewGroup parent) {
+        int children = parent.getChildCount();
+        for (int i = 0; i < children; i++) {
+            View view = parent.getChildAt(i);
+            if (view.getVisibility() == View.VISIBLE) {
+                if (view instanceof TextView) {
+                    output.add((TextView) view);
+                } else if (view instanceof ViewGroup) {
+                    getTextViews(output, (ViewGroup) view);
+                }
+            }
+        }
+    }
+
     private boolean isDuplicateNotification(StatusBarNotification sbn) {
         return lastNotification != null && lastNotification.getKey().equals(sbn.getKey());
     }
@@ -219,6 +237,7 @@ public class NotificationService extends NotificationListenerService {
 
     @Override
     public void onNotificationRemoved (StatusBarNotification sbn) {
+        Log.e("NotificationService", "onNotificationRemoved");
         if(sbn.getPackageName() != null) {
             Log.i(TAG, "********** onNotificationRemoved");
             Log.i(TAG, "ID :" + sbn.getId() + " \t " + sbn.getNotification().tickerText + " \t " + sbn.getPackageName());
@@ -228,6 +247,7 @@ public class NotificationService extends NotificationListenerService {
     @Override
     public void onDestroy() {
         super.onDestroy();
+        toggleNotificationListenerService();
         ForegroundServiceLauncher.getInstance().startService(this);
     }
 }

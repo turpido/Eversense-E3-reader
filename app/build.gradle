@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId "com.example.senddatatoserver"
-        minSdk 25
+        minSdk 28
         targetSdk 34
         versionCode 1
         versionName "1.0"
@@ -44,9 +44,11 @@ dependencies {
 //    implementation("androidx.hilt:hilt-navigation-compose:1.0.0")
 //    implementation 'androidx.work:work-runtime:2.7.1'
     implementation 'com.google.guava:guava:27.0.1-android'
+    implementation "androidx.work:work-runtime:2.8.1"
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    implementation 'androidx.work:work-runtime:2.9.0'
 //    implementation 'com.google.firebase:firebase-database:20.2.2'
 //    implementation 'androidx.work:work-runtime:2.8.1'
     testImplementation 'junit:junit:4.13.2'

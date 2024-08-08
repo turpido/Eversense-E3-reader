@@ -36,13 +36,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         try {
-//            OneTimeWorkRequest workRequest = new OneTimeWorkRequest.Builder(BackupWorker.class)
-//                    .setConstraints(new Constraints.Builder()
-//                            .setRequiredNetworkType(NetworkType.NOT_REQUIRED)
-//                            .build())
-//                    .build();
-//            WorkManager.getInstance(this).enqueue(workRequest);
-//
             if (ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS},REQUEST_NOTIFICATION_CODE);
             }
